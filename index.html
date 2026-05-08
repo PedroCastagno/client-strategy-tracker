@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Client Strategy — Acompanhamento</title>
+
+<!-- MSAL for Microsoft login -->
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #f7f6f2;
+  --surface: #ffffff;
+  --surface2: #f0ede6;
+  --border: #e2ddd6;
+  --border2: #ccc8c0;
+  --text: #1a1816;
+  --text2: #6b6560;
+  --text3: #9e9890;
+  --accent: #1a6b4a;
+  --pedro: #15803d;
+  --natalia: #7c3aed;
+  --carol: #2563eb;
+  --s-verde: #d1fae5; --s-verde-t: #065f46;
+  --s-amarelo: #fef3c7; --s-amarelo-t: #92400e;
+  --s-azul: #dbeafe; --s-azul-t: #1e40af;
+  --s-cinza: #f1f5f9; --s-cinza-t: #475569;
+  --s-teal: #ccfbf1; --s-teal-t: #134e4a;
+  --s-roxo: #ede9fe; --s-roxo-t: #5b21b6;
+  --s-laranja: #ffedd5; --s-laranja-t: #9a3412;
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 13px;
+}
+
+/* ── LOGIN SCREEN ── */
+#login-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg);
+}
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 48px 56px;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 4px 32px rgba(0,0,0,.06);
+}
+.login-dot { width: 12px; height: 12px; background: var(--accent); border-radius: 50%; margin: 0 auto 20px; }
+.login-card h1 { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+.login-card p { font-size: 12px; color: var(--text2); margin-bottom: 32px; line-height: 1.5; }
+.btn-ms {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 12px 24px; border-radius: 8px;
+  background: #0078d4; color: #fff;
+  border: none; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+  transition: background .15s; width: 100%; justify-content: center;
+}
+.btn-ms:hover { background: #006cbd; }
+.ms-icon { font-size: 16px; }
+.login-note { font-size: 11px; color: var(--text3); margin-top: 16px; line-height: 1.5; }
+
+/* ── SETUP SCREEN ── */
+#setup-screen {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg);
+  padding: 24px;
+}
+.setup-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 40px;
+  max-width: 560px;
+  width: 100%;
+  box-shadow: 0 4px 32px rgba(0,0,0,.06);
+}
+.setup-card h2 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+.setup-card p { font-size: 12px; color: var(--text2); margin-bottom: 24px; line-height: 1.6; }
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 11px; font-weight: 500; color: var(--text2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .4px; }
+.field input {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 8px;
+  font-family: 'DM Mono', monospace; font-size: 12px;
+  background: var(--bg); color: var(--text);
+  outline: none; transition: border-color .15s;
+}
+.field input:focus { border-color: var(--accent); }
+.field small { display: block; font-size: 10px; color: var(--text3); margin-top: 4px; }
+.setup-actions { display: flex; gap: 10px; margin-top: 8px; }
+
+/* ── APP ── */
+#app { display: none; }
+
+/* HEADER */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 32px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.header-left { display: flex; align-items: center; gap: 14px; }
+.logo { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; }
+.header h1 { font-size: 14px; font-weight: 600; }
+.header-date { font-size: 11px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.header-right { display: flex; gap: 10px; align-items: center; }
+.user-pill {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 11px; color: var(--text2);
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 99px; padding: 4px 12px;
+}
+.user-dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
+
+/* SYNC BAR */
+.sync-bar {
+  height: 3px; background: var(--border);
+  position: sticky; top: 57px; z-index: 99;
+  overflow: hidden;
+}
+.sync-progress {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--accent), #34d399);
+  transition: width .4s ease, opacity .3s;
+  opacity: 0;
+}
+.sync-bar.syncing .sync-progress { opacity: 1; animation: syncAnim 1.2s ease infinite; }
+@keyframes syncAnim { 0%{width:0%;opacity:1} 60%{width:100%;opacity:1} 100%{width:100%;opacity:0} }
+
+/* FILTERS */
+.filters {
+  padding: 12px 32px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+}
+.filter-label { font-size: 11px; color: var(--text3); margin-right: 2px; }
+.filter-btn {
+  font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 500;
+  padding: 4px 12px; border-radius: 99px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text2); cursor: pointer; transition: all .15s;
+}
+.filter-btn:hover { border-color: var(--border2); color: var(--text); }
+.filter-btn.active { background: var(--text); color: #fff; border-color: var(--text); }
+.filter-btn.fp.active { background: var(--pedro); border-color: var(--pedro); }
+.filter-btn.fn.active { background: var(--natalia); border-color: var(--natalia); }
+.filter-btn.fc.active { background: var(--carol); border-color: var(--carol); }
+.filter-divider { width: 1px; height: 18px; background: var(--border); margin: 0 4px; }
+
+/* MAIN */
+.main { padding: 24px 32px; display: flex; flex-direction: column; gap: 24px; }
+
+/* SECTION */
+.section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.section-head {
+  padding: 13px 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border); background: var(--surface2);
+}
+.section-title { font-size: 12px; font-weight: 600; }
+.section-count {
+  font-size: 10px; font-family: 'DM Mono', monospace;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 99px; padding: 2px 8px; color: var(--text2);
+}
+
+/* TABLE */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 600px; }
+th {
+  text-align: left; font-size: 10px; font-weight: 600;
+  color: var(--text3); padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap; letter-spacing: .3px; text-transform: uppercase;
+}
+td { padding: 0; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr.hidden-row { display: none; }
+tr.data-row:hover td { background: #faf9f6; }
+
+.cell {
+  padding: 8px 12px; min-height: 36px; outline: none;
+  font-family: 'DM Sans', sans-serif; font-size: 12px;
+  color: var(--text); line-height: 1.4; cursor: text;
+  transition: background .1s; white-space: pre-wrap;
+}
+.cell:focus { background: #fffef9; box-shadow: inset 0 0 0 2px #d4a84b30; }
+
+/* BADGE */
+.badge-cell { padding: 8px 12px; }
+.badge {
+  display: inline-block; font-size: 10px; font-weight: 600;
+  padding: 3px 9px; border-radius: 99px; white-space: nowrap;
+  cursor: pointer; user-select: none;
+}
+.b-verde   { background: var(--s-verde);   color: var(--s-verde-t); }
+.b-amarelo { background: var(--s-amarelo); color: var(--s-amarelo-t); }
+.b-azul    { background: var(--s-azul);    color: var(--s-azul-t); }
+.b-cinza   { background: var(--s-cinza);   color: var(--s-cinza-t); }
+.b-teal    { background: var(--s-teal);    color: var(--s-teal-t); }
+.b-roxo    { background: var(--s-roxo);    color: var(--s-roxo-t); }
+.b-laranja { background: var(--s-laranja); color: var(--s-laranja-t); }
+
+/* STATUS PICKER */
+.status-picker {
+  position: fixed; background: var(--surface);
+  border: 1px solid var(--border2); border-radius: var(--radius);
+  padding: 6px; display: none; flex-direction: column; gap: 3px;
+  z-index: 999; box-shadow: 0 8px 24px rgba(0,0,0,.12); min-width: 170px;
+}
+.status-picker.open { display: flex; }
+.status-option {
+  padding: 5px 8px; border-radius: 6px; cursor: pointer;
+  transition: background .1s; font-size: 11px; color: var(--text2);
+}
+.status-option:hover { background: var(--surface2); }
+
+/* RESP SELECT */
+.resp-cell { padding: 8px 12px; }
+.resp-select {
+  font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 600;
+  border: none; background: transparent; cursor: pointer; outline: none;
+  color: var(--text2); padding: 0; width: 100%;
+}
+.resp-select.pedro   { color: var(--pedro); }
+.resp-select.natalia { color: var(--natalia); }
+.resp-select.carol   { color: var(--carol); }
+
+/* ADD / DEL */
+.add-row-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 14px; font-family: 'DM Sans', sans-serif;
+  font-size: 11px; color: var(--text3);
+  background: none; border: none; border-top: 1px dashed var(--border);
+  width: 100%; cursor: pointer; transition: color .15s, background .15s;
+}
+.add-row-btn:hover { color: var(--accent); background: #f0fdf6; }
+.del-btn {
+  opacity: 0; background: none; border: none; cursor: pointer;
+  color: #e05050; font-size: 14px; padding: 4px 8px;
+  border-radius: 4px; transition: opacity .15s; line-height: 1;
+}
+tr.data-row:hover .del-btn { opacity: 1; }
+.del-btn:hover { background: #fff0f0; }
+
+/* BUTTONS */
+.btn {
+  font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 500;
+  padding: 6px 14px; border-radius: 7px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text2); cursor: pointer; transition: all .15s;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.btn:hover { border-color: var(--border2); color: var(--text); }
+.btn-primary { background: var(--text); color: #fff; border-color: var(--text); }
+.btn-primary:hover { background: #2d2d2d; border-color: #2d2d2d; color: #fff; }
+.btn-green { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-green:hover { background: #155c3c; border-color: #155c3c; color: #fff; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--text); color: #fff;
+  padding: 10px 18px; border-radius: 8px; font-size: 12px;
+  opacity: 0; transform: translateY(8px); transition: all .25s;
+  z-index: 9999; pointer-events: none; display: flex; align-items: center; gap: 8px;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.error { background: #dc2626; }
+
+/* LEGEND */
+.legend { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 32px 0; align-items: center; }
+.legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text3); }
+
+/* CONFIG notice */
+.config-notice {
+  background: #fffbeb; border: 1px solid #fde68a;
+  border-radius: 8px; padding: 12px 16px; margin: 16px 32px 0;
+  font-size: 11px; color: #92400e; display: none;
+  align-items: center; gap: 8px;
+}
+.config-notice a { color: #92400e; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN SCREEN ── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-dot"></div>
+    <h1>Client Strategy</h1>
+    <p>Acompanhamento semanal de leads e clientes.<br>Faça login com sua conta Microsoft para continuar.</p>
+    <button class="btn-ms" onclick="signIn()">
+      <span class="ms-icon">⊞</span> Entrar com Microsoft
+    </button>
+    <p class="login-note">Seus dados ficam no SharePoint da empresa.<br>Nenhuma informação é enviada a terceiros.</p>
+  </div>
+</div>
+
+<!-- ── SETUP SCREEN ── -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <h2>⚙️ Configuração inicial</h2>
+    <p>Preencha os dados abaixo uma única vez. Você encontra essas informações no portal do Azure ou com o admin da empresa. Após salvar, todos do time usarão automaticamente.</p>
+    <div class="field">
+      <label>Client ID (App ID)</label>
+      <input type="text" id="cfg-clientId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+      <small>Registrado no Azure Active Directory → App registrations</small>
+    </div>
+    <div class="field">
+      <label>Tenant ID</label>
+      <input type="text" id="cfg-tenantId" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+      <small>Azure Active Directory → Overview → Tenant ID</small>
+    </div>
+    <div class="field">
+      <label>URL do site SharePoint</label>
+      <input type="text" id="cfg-siteUrl" placeholder="https://suaempresa.sharepoint.com/sites/ClientStrategy">
+      <small>URL da página onde este arquivo está hospedado</small>
+    </div>
+    <div class="field">
+      <label>Nome da Lista SharePoint</label>
+      <input type="text" id="cfg-listName" placeholder="ClientStrategyTracker" value="ClientStrategyTracker">
+      <small>Crie uma lista com esse nome no SharePoint (será populada automaticamente)</small>
+    </div>
+    <div class="setup-actions">
+      <button class="btn btn-green" onclick="saveConfig()">Salvar e continuar</button>
+      <button class="btn" onclick="showDemo()">Ver demo (sem SharePoint)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app">
+  <div class="header">
+    <div class="header-left">
+      <div class="logo"></div>
+      <h1>Client Strategy</h1>
+      <span class="header-date" id="week-label"></span>
+    </div>
+    <div class="header-right">
+      <div class="user-pill">
+        <div class="user-dot"></div>
+        <span id="user-name">—</span>
+      </div>
+      <button class="btn" id="sync-btn" onclick="syncNow()" title="Sincronizar com SharePoint">↻ Sincronizar</button>
+      <button class="btn" onclick="exportEmail()">↗ Exportar e-mail</button>
+      <button class="btn" onclick="signOut()">Sair</button>
+    </div>
+  </div>
+
+  <div class="sync-bar" id="sync-bar"><div class="sync-progress" id="sync-progress"></div></div>
+
+  <div class="config-notice" id="config-notice">
+    ⚠️ Modo demo — dados não estão sendo salvos no SharePoint.
+    <a href="#" onclick="showSetup()">Configurar integração</a>
+  </div>
+
+  <div class="filters">
+    <span class="filter-label">Responsável:</span>
+    <button class="filter-btn fp" onclick="toggleFilter('pedro',this)">Pedro</button>
+    <button class="filter-btn fn" onclick="toggleFilter('natalia',this)">Natalia</button>
+    <button class="filter-btn fc" onclick="toggleFilter('carol',this)">Carol</button>
+    <div class="filter-divider"></div>
+    <span class="filter-label">Status:</span>
+    <button class="filter-btn" onclick="toggleFilter('em andamento',this)">Em andamento</button>
+    <button class="filter-btn" onclick="toggleFilter('pendente',this)">Pendente</button>
+    <button class="filter-btn" onclick="toggleFilter('agendado',this)">Agendado</button>
+    <button class="filter-btn" onclick="toggleFilter('stand-by',this)">Stand-by</button>
+    <button class="filter-btn" onclick="toggleFilter('finalizado',this)">Finalizado</button>
+    <div class="filter-divider"></div>
+    <button class="filter-btn" onclick="clearFilters()">✕ Limpar</button>
+  </div>
+
+  <div class="legend">
+    <span class="legend-item"><span class="badge b-verde">em andamento</span></span>
+    <span class="legend-item"><span class="badge b-amarelo">pendente</span></span>
+    <span class="legend-item"><span class="badge b-azul">agendado</span></span>
+    <span class="legend-item"><span class="badge b-cinza">stand-by</span></span>
+    <span class="legend-item"><span class="badge b-teal">finalizado</span></span>
+    <span class="legend-item"><span class="badge b-roxo">em revisão</span></span>
+    <span style="margin:0 4px;color:var(--border2)">·</span>
+    <span class="legend-item"><span style="color:var(--pedro);font-weight:600;font-size:11px;">Pedro</span></span>
+    <span class="legend-item"><span style="color:var(--natalia);font-weight:600;font-size:11px;">Natalia</span></span>
+    <span class="legend-item"><span style="color:var(--carol);font-weight:600;font-size:11px;">Carol</span></span>
+  </div>
+
+  <div class="main" id="main"></div>
+</div>
+
+<!-- STATUS PICKER -->
+<div class="status-picker" id="status-picker">
+  <div class="status-option" onclick="applyStatus('em andamento','b-verde')"><span class="badge b-verde">em andamento</span></div>
+  <div class="status-option" onclick="applyStatus('pendente','b-amarelo')"><span class="badge b-amarelo">pendente</span></div>
+  <div class="status-option" onclick="applyStatus('agendado','b-azul')"><span class="badge b-azul">agendado</span></div>
+  <div class="status-option" onclick="applyStatus('stand-by','b-cinza')"><span class="badge b-cinza">stand-by</span></div>
+  <div class="status-option" onclick="applyStatus('finalizado','b-teal')"><span class="badge b-teal">finalizado</span></div>
+  <div class="status-option" onclick="applyStatus('em revisão','b-roxo')"><span class="badge b-roxo">em revisão</span></div>
+  <div class="status-option" onclick="applyStatus('aguardando','b-laranja')"><span class="badge b-laranja">aguardando</span></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════
+let CONFIG = {
+  clientId: '',
+  tenantId: '',
+  siteUrl: '',
+  listName: 'ClientStrategyTracker'
+};
+
+let msalInstance = null;
+let accessToken = null;
+let currentUser = null;
+let isDemo = false;
+let siteId = null;
+let listId = null;
+
+// Load saved config from localStorage
+function loadConfig() {
+  const saved = localStorage.getItem('cs_tracker_config');
+  if (saved) {
+    try { CONFIG = { ...CONFIG, ...JSON.parse(saved) }; } catch(e) {}
+  }
+}
+
+function saveConfig() {
+  CONFIG.clientId  = document.getElementById('cfg-clientId').value.trim();
+  CONFIG.tenantId  = document.getElementById('cfg-tenantId').value.trim();
+  CONFIG.siteUrl   = document.getElementById('cfg-siteUrl').value.trim();
+  CONFIG.listName  = document.getElementById('cfg-listName').value.trim() || 'ClientStrategyTracker';
+  if (!CONFIG.clientId || !CONFIG.tenantId || !CONFIG.siteUrl) {
+    showToast('Preencha todos os campos obrigatórios', true); return;
+  }
+  localStorage.setItem('cs_tracker_config', JSON.stringify(CONFIG));
+  initMsal();
+  showLoginScreen();
+}
+
+function showDemo() {
+  isDemo = true;
+  document.getElementById('config-notice').style.display = 'flex';
+  showApp('Usuário Demo');
+}
+
+function showSetup() {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'flex';
+  document.getElementById('login-screen').style.display = 'none';
+}
+
+function showLoginScreen() {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+function showApp(name) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('user-name').textContent = name;
+  const d = new Date();
+  document.getElementById('week-label').textContent =
+    d.toLocaleDateString('pt-BR', {day:'2-digit', month:'short', year:'numeric'});
+  renderAll();
+  if (!isDemo) loadFromSharePoint();
+}
+
+// ══════════════════════════════════════════════════════
+// MSAL AUTH
+// ══════════════════════════════════════════════════════
+function initMsal() {
+  if (!CONFIG.clientId || !CONFIG.tenantId) return;
+  msalInstance = new msal.PublicClientApplication({
+    auth: {
+      clientId: CONFIG.clientId,
+      authority: `https://login.microsoftonline.com/${CONFIG.tenantId}`,
+      redirectUri: window.location.href.split('?')[0]
+    },
+    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
+  });
+}
+
+async function signIn() {
+  if (!CONFIG.clientId) { showSetupScreen(); return; }
+  if (!msalInstance) initMsal();
+  try {
+    const result = await msalInstance.loginPopup({
+      scopes: ['User.Read', 'Sites.ReadWrite.All']
+    });
+    currentUser = result.account;
+    accessToken = result.accessToken;
+    showApp(result.account.name || result.account.username);
+  } catch(e) {
+    if (e.errorCode === 'user_cancelled') return;
+    showToast('Erro no login: ' + (e.message || e), true);
+  }
+}
+
+function showSetupScreen() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'flex';
+  // prefill
+  document.getElementById('cfg-clientId').value = CONFIG.clientId;
+  document.getElementById('cfg-tenantId').value = CONFIG.tenantId;
+  document.getElementById('cfg-siteUrl').value = CONFIG.siteUrl;
+  document.getElementById('cfg-listName').value = CONFIG.listName;
+}
+
+async function getToken() {
+  if (!msalInstance || !currentUser) return null;
+  try {
+    const result = await msalInstance.acquireTokenSilent({
+      scopes: ['Sites.ReadWrite.All'],
+      account: currentUser
+    });
+    return result.accessToken;
+  } catch(e) {
+    const result = await msalInstance.acquireTokenPopup({ scopes: ['Sites.ReadWrite.All'] });
+    return result.accessToken;
+  }
+}
+
+function signOut() {
+  if (msalInstance && currentUser) msalInstance.logoutPopup();
+  localStorage.removeItem('cs_tracker_msal_account');
+  showLoginScreen();
+}
+
+// ══════════════════════════════════════════════════════
+// GRAPH API — SharePoint Lists
+// ══════════════════════════════════════════════════════
+async function graphRequest(path, method='GET', body=null) {
+  const token = await getToken();
+  if (!token) throw new Error('Sem token de acesso');
+  const opts = {
+    method,
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(`https://graph.microsoft.com/v1.0${path}`, opts);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `HTTP ${res.status}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+async function getSiteId() {
+  if (siteId) return siteId;
+  const url = new URL(CONFIG.siteUrl);
+  const hostname = url.hostname;
+  const path = url.pathname;
+  const data = await graphRequest(`/sites/${hostname}:${path}`);
+  siteId = data.id;
+  return siteId;
+}
+
+async function getListId() {
+  if (listId) return listId;
+  const site = await getSiteId();
+  const data = await graphRequest(`/sites/${site}/lists?$filter=displayName eq '${CONFIG.listName}'`);
+  if (data.value && data.value.length > 0) {
+    listId = data.value[0].id;
+    return listId;
+  }
+  // Create list if not exists
+  const created = await graphRequest(`/sites/${site}/lists`, 'POST', {
+    displayName: CONFIG.listName,
+    columns: [
+      { name: 'SecaoId',      text: {} },
+      { name: 'SecaoTitulo',  text: {} },
+      { name: 'Lead',         text: {} },
+      { name: 'Banker',       text: {} },
+      { name: 'ProximoPasso', text: { allowMultipleLines: true } },
+      { name: 'Responsavel',  text: {} },
+      { name: 'Prazo',        text: {} },
+      { name: 'StatusLabel',  text: {} },
+      { name: 'StatusCls',    text: {} },
+      { name: 'Ordem',        number: {} },
+    ],
+    list: { template: 'genericList' }
+  });
+  listId = created.id;
+  return listId;
+}
+
+// Load all rows from SharePoint and rebuild SECTIONS
+async function loadFromSharePoint() {
+  if (isDemo) return;
+  setSyncing(true);
+  try {
+    const site = await getSiteId();
+    const list = await getListId();
+    const data = await graphRequest(
+      `/sites/${site}/lists/${list}/items?$expand=fields&$top=500&$orderby=fields/Ordem asc`
+    );
+    if (!data.value || data.value.length === 0) {
+      // First time — push default data
+      await pushAllToSharePoint();
+      setSyncing(false);
+      return;
+    }
+    // Rebuild SECTIONS rows from SharePoint data
+    SECTIONS.forEach(sec => sec.rows = []);
+    data.value.forEach(item => {
+      const f = item.fields;
+      const sec = SECTIONS.find(s => s.id === f.SecaoId);
+      if (!sec) return;
+      const row = { _spId: item.id };
+      sec.colKeys.forEach(k => {
+        if (k === 'status') row.status = { label: f.StatusLabel || '', cls: f.StatusCls || 'b-cinza' };
+        else if (k === 'lead') row.lead = f.Lead || '';
+        else if (k === 'banker') row.banker = f.Banker || '';
+        else if (k === 'proximo') row.proximo = f.ProximoPasso || '';
+        else if (k === 'responsavel') row.responsavel = f.Responsavel || '—';
+        else if (k === 'prazo') row.prazo = f.Prazo || '—';
+      });
+      sec.rows.push(row);
+    });
+    renderAll();
+    showToast('✓ Sincronizado com SharePoint');
+  } catch(e) {
+    showToast('Erro ao carregar: ' + e.message, true);
+  }
+  setSyncing(false);
+}
+
+async function pushAllToSharePoint() {
+  const site = await getSiteId();
+  const list = await getListId();
+  let ordem = 0;
+  for (const sec of SECTIONS) {
+    for (const row of sec.rows) {
+      await graphRequest(`/sites/${site}/lists/${list}/items`, 'POST', {
+        fields: rowToFields(sec, row, ordem++)
+      });
+    }
+  }
+}
+
+function rowToFields(sec, row, ordem) {
+  return {
+    SecaoId: sec.id,
+    SecaoTitulo: sec.title,
+    Lead: row.lead || '',
+    Banker: row.banker || '',
+    ProximoPasso: row.proximo || '',
+    Responsavel: row.responsavel || '—',
+    Prazo: row.prazo || '—',
+    StatusLabel: row.status ? row.status.label : '',
+    StatusCls: row.status ? row.status.cls : 'b-cinza',
+    Ordem: ordem
+  };
+}
+
+async function saveRowToSharePoint(sec, row, ordem) {
+  if (isDemo) return;
+  try {
+    const site = await getSiteId();
+    const list = await getListId();
+    const fields = rowToFields(sec, row, ordem);
+    if (row._spId) {
+      await graphRequest(`/sites/${site}/lists/${list}/items/${row._spId}/fields`, 'PATCH', fields);
+    } else {
+      const created = await graphRequest(`/sites/${site}/lists/${list}/items`, 'POST', { fields });
+      row._spId = created.id;
+    }
+  } catch(e) {
+    showToast('Erro ao salvar: ' + e.message, true);
+  }
+}
+
+async function deleteRowFromSharePoint(spId) {
+  if (isDemo || !spId) return;
+  try {
+    const site = await getSiteId();
+    const list = await getListId();
+    await graphRequest(`/sites/${site}/lists/${list}/items/${spId}`, 'DELETE');
+  } catch(e) {
+    showToast('Erro ao deletar: ' + e.message, true);
+  }
+}
+
+function syncNow() { loadFromSharePoint(); }
+
+function setSyncing(on) {
+  document.getElementById('sync-bar').classList.toggle('syncing', on);
+  const btn = document.getElementById('sync-btn');
+  if (btn) btn.disabled = on;
+}
+
+// ══════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════
+const SECTIONS = [
+  {
+    id: 's1', title: '1. Leads Ativos | Em andamento',
+    cols: ['Lead','Banker / Origem','Próximo passo','Responsável','Prazo','Status'],
+    colKeys: ['lead','banker','proximo','responsavel','prazo','status'],
+    hasResp: true,
+    rows: [
+      {lead:'IHARA (caixa)',        banker:'Luis Almeida FOX',  proximo:'Revisar pendência',                          responsavel:'Natalia', prazo:'—',     status:{label:'em revisão',cls:'b-roxo'}},
+      {lead:'MG Participações',     banker:'Vanderlei',          proximo:'Validar se seguiremos com a proposta',       responsavel:'Natalia', prazo:'—',     status:{label:'tendência: não seguir',cls:'b-cinza'}},
+      {lead:'Nelço e Sonia',        banker:'Leonardo P. POA',    proximo:'Elaborar material para reunião',             responsavel:'Pedro',   prazo:'11/05', status:{label:'em andamento',cls:'b-verde'}},
+      {lead:'Augusto e Giovanna',   banker:'Paula S. SIERRA',    proximo:'Follow-up interno',                          responsavel:'Carol',   prazo:'08/05', status:{label:'em andamento',cls:'b-verde'}},
+      {lead:'Guilherme C.',         banker:'—',                  proximo:'Estudo de crédito privado',                  responsavel:'Carol',   prazo:'15/05', status:{label:'em andamento',cls:'b-verde'}},
+      {lead:'Glaucio e Viviane T.', banker:'Talise S. HOTEL',    proximo:'Entender novo e-mail enviado',               responsavel:'—',       prazo:'14/05', status:{label:'pendente entendimento',cls:'b-amarelo'}},
+      {lead:'Alexandre J. Zucca',   banker:'YANKEE',             proximo:'Subir no link + planilhar + validar prazo',  responsavel:'—',       prazo:'—',     status:{label:'aguardando submissão',cls:'b-laranja'}},
+    ]
+  },
+  {
+    id: 's2', title: '2. Clientes | Acompanhamento',
+    cols: ['Cliente','Próximo passo','Responsável','Prazo','Status'],
+    colKeys: ['lead','proximo','responsavel','prazo','status'],
+    hasResp: true,
+    rows: [
+      {lead:'Renan L.',           proximo:'FUP conversa banker + gestão',  responsavel:'Natalia', prazo:'—',                    status:{label:'em andamento',cls:'b-verde'}},
+      {lead:'Família Carvalho',   proximo:'Alinhar próximos passos',        responsavel:'Natalia', prazo:'12 ou 13/05',          status:{label:'pendente',cls:'b-amarelo'}},
+      {lead:'Anna P. Z.',         proximo:'Acompanhamento',                 responsavel:'Pedro',   prazo:'11/05',                status:{label:'agendado',cls:'b-azul'}},
+      {lead:'Família Caneschi',   proximo:'Entender status com Nat',        responsavel:'Natalia', prazo:'—',                    status:{label:'pendente',cls:'b-amarelo'}},
+      {lead:'Família Andrade',    proximo:'Acompanhamento',                 responsavel:'Pedro',   prazo:'14/05',                status:{label:'entender data c/ banker',cls:'b-laranja'}},
+      {lead:'Michael R.A.T.',     proximo:'Acompanhamento',                 responsavel:'Pedro',   prazo:'14/05 (mat. 12/05)',   status:{label:'agendado',cls:'b-azul'}},
+      {lead:'Paulo N.',           proximo:'Acompanhamento',                 responsavel:'Pedro',   prazo:'14/05 (mat. 12/05)',   status:{label:'agendado',cls:'b-azul'}},
+      {lead:'Fernando W.',        proximo:'Acompanhamento',                 responsavel:'Pedro',   prazo:'15/05 (mat. 13/05)',   status:{label:'agendado',cls:'b-azul'}},
+    ]
+  },
+  {
+    id: 's3', title: '3. Clientes | Onboarding / FUP',
+    cols: ['Cliente','Banker','Próximo passo','Status'],
+    colKeys: ['lead','banker','proximo','status'],
+    hasResp: false,
+    rows: [
+      {lead:'Maria Antônia S.',    banker:'Pedro Teixeira', proximo:'Follow-up onboarding',    status:{label:'em andamento',cls:'b-verde'}},
+      {lead:'Luciana e Alberto C.',banker:'Gui Burger',     proximo:'Follow-up onboarding',    status:{label:'em andamento',cls:'b-verde'}},
+      {lead:'Marize Zenatur',      banker:'—',              proximo:'Aguardar retorno do lead', status:{label:'em espera',cls:'b-cinza'}},
+    ]
+  },
+  {
+    id: 's4', title: '4. Leads | Stand-by / Follow-up',
+    cols: ['Lead','Banker / Origem','Próximo passo','Responsável','Status'],
+    colKeys: ['lead','banker','proximo','responsavel','status'],
+    hasResp: true,
+    rows: [
+      {lead:'Gisela M.',       banker:'Rodrigo Nesadal', proximo:'Aguardar posicionamento cliente',     responsavel:'Natalia', status:{label:'stand-by',cls:'b-cinza'}},
+      {lead:'Família Setti',   banker:'—',               proximo:'Aguardar posicionamento cliente',     responsavel:'Natalia', status:{label:'stand-by',cls:'b-cinza'}},
+      {lead:'Família Natel',   banker:'Rafael Galvão',   proximo:'Aguardando reunião',                  responsavel:'Carol',   status:{label:'pendente',cls:'b-amarelo'}},
+      {lead:'Celso H.',        banker:'Vanderlei',        proximo:'FUP com banker',                     responsavel:'Natalia', status:{label:'pendente',cls:'b-amarelo'}},
+      {lead:'Marcia Y.',       banker:'Danilo / Gama',   proximo:'Follow-up',                          responsavel:'Pedro',   status:{label:'pendente',cls:'b-amarelo'}},
+      {lead:'Marcos Egídio B.',banker:'Vanderlei',        proximo:'Aguardar extratos + análise carteira',responsavel:'Natalia',status:{label:'dependência banker',cls:'b-laranja'}},
+      {lead:'Amanda A.',       banker:'Bruno Rocca',      proximo:'Validar próximos passos',            responsavel:'Natalia', status:{label:'pendente',cls:'b-amarelo'}},
+    ]
+  },
+  {
+    id: 's5a', title: '5. Comunicação & Materiais — Rotina recorrente',
+    cols: ['Tema','Próximo passo','Responsável','Frequência'],
+    colKeys: ['lead','proximo','responsavel','prazo'],
+    hasResp: true,
+    rows: [
+      {lead:'Update semanal',     proximo:'Revisar slides com Liliana',           responsavel:'Pedro',        prazo:'Toda segunda'},
+      {lead:'Materiais mensais',  proximo:'Atualização recorrente',               responsavel:'Pedro + Carol', prazo:'Mensal'},
+      {lead:'Panorama Mensal',    proximo:'Atualizar slides padrão',              responsavel:'—',            prazo:'Mensal'},
+      {lead:'Email Cps',          proximo:'Atualização recorrente',               responsavel:'Pedro',        prazo:'Semanal'},
+      {lead:'Email PP + Invites', proximo:'Alinhar encaminhamento dos invites',   responsavel:'Pedro',        prazo:'Semanal'},
+    ]
+  },
+  {
+    id: 's5b', title: '5. Comunicação & Materiais — Estruturação / Projetos',
+    cols: ['Projeto','Próximo passo','Responsável','Status'],
+    colKeys: ['lead','proximo','responsavel','status'],
+    hasResp: true,
+    rows: [
+      {lead:'Slides por classe/tema',              proximo:'Consolidar materiais',                          responsavel:'Pedro',         status:{label:'em andamento',cls:'b-verde'}},
+      {lead:'Atualização base leads',              proximo:'Revisar base',                                  responsavel:'Natalia + Carol',status:{label:'em andamento',cls:'b-verde'}},
+      {lead:'Revisão GF & DM no CRM',             proximo:'Revisar grupos',                                responsavel:'Natalia + Carol',status:{label:'em andamento',cls:'b-verde'}},
+      {lead:'Campos relatório Sugar',              proximo:'Definir campos',                                responsavel:'Natalia + Carol',status:{label:'em andamento',cls:'b-verde'}},
+      {lead:'Dashboard Sugar',                     proximo:'Estruturar métricas',                           responsavel:'Natalia',        status:{label:'em andamento',cls:'b-verde'}},
+      {lead:'Offshore',                            proximo:'Material movimentações',                        responsavel:'Pedro',          status:{label:'pendente',cls:'b-amarelo'}},
+      {lead:'Speech 9 pontos',                     proximo:'Revisão',                                       responsavel:'Natalia',        status:{label:'em andamento',cls:'b-verde'}},
+      {lead:'Projeto AI',                          proximo:'Evolução projeto',                              responsavel:'Pedro + Carol',  status:{label:'em andamento',cls:'b-verde'}},
+      {lead:'PPT acompanhamento',                  proximo:'Definir fluxo/frequência + inputs gestão',      responsavel:'Natalia',        status:{label:'em definição',cls:'b-laranja'}},
+      {lead:'Guia banker clientes MFO',            proximo:'Estruturar material',                           responsavel:'Carol',          status:{label:'enviado p/ revisão',cls:'b-roxo'}},
+      {lead:'Alinhamento GF no CRM',               proximo:'Estruturar dinâmica',                           responsavel:'Carol',          status:{label:'em andamento',cls:'b-verde'}},
+      {lead:'Base de fundos',                      proximo:'Consolidar base',                               responsavel:'Pedro',          status:{label:'em andamento',cls:'b-verde'}},
+      {lead:'Mapeamento de Mercado (Raízen & GPA)',proximo:'Finalizado',                                    responsavel:'Pedro + Carol',  status:{label:'finalizado',cls:'b-teal'}},
+    ]
+  }
+];
+
+// ══════════════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════════════
+function respColor(val) {
+  if (!val) return '';
+  const v = val.toLowerCase();
+  if (v.includes('pedro') && !v.includes('carol') && !v.includes('natalia')) return 'pedro';
+  if (v.includes('natalia') && !v.includes('pedro') && !v.includes('carol')) return 'natalia';
+  if (v.includes('carol') && !v.includes('pedro') && !v.includes('natalia')) return 'carol';
+  return '';
+}
+
+function buildRespSelect(val) {
+  const options = ['—','Pedro','Natalia','Carol','Pedro + Carol','Natalia + Carol','Pedro + Natalia'];
+  const cls = respColor(val);
+  return `<select class="resp-select ${cls}" onchange="onRespChange(this)">${
+    options.map(o => `<option${o===val?' selected':''}>${o}</option>`).join('')
+  }</select>`;
+}
+
+function onRespChange(sel) {
+  const cls = respColor(sel.value);
+  sel.className = 'resp-select' + (cls ? ' '+cls : '');
+  scheduleRowSave(sel.closest('tr'));
+}
+
+function buildRow(sec, row) {
+  const statusLabel = row.status ? row.status.label : '';
+  const statusCls   = row.status ? row.status.cls   : 'b-cinza';
+  const tr = document.createElement('tr');
+  tr.className = 'data-row';
+  tr.dataset.secId = sec.id;
+  tr.dataset.resp = (row.responsavel || '').toLowerCase();
+  tr.dataset.status = statusLabel;
+
+  let html = '';
+  sec.colKeys.forEach(key => {
+    if (key === 'status') {
+      html += `<td class="badge-cell"><span class="badge ${statusCls}" onclick="openStatusPicker(this,event)">${statusLabel}</span></td>`;
+    } else if (key === 'responsavel') {
+      html += `<td class="resp-cell">${buildRespSelect(row.responsavel || '—')}</td>`;
+    } else {
+      html += `<td><div class="cell" contenteditable="true" onblur="scheduleRowSave(this.closest('tr'))">${row[key] || ''}</div></td>`;
+    }
+  });
+  html += `<td style="width:36px;"><button class="del-btn" onclick="deleteRow(this)">×</button></td>`;
+  tr.innerHTML = html;
+  tr._rowData = row;
+  return tr;
+}
+
+function renderAll() {
+  const main = document.getElementById('main');
+  main.innerHTML = '';
+  SECTIONS.forEach(sec => {
+    const wrap = document.createElement('div');
+    wrap.className = 'section';
+    wrap.id = 'sec-' + sec.id;
+    wrap.innerHTML = `
+      <div class="section-head">
+        <span class="section-title">${sec.title}</span>
+        <span class="section-count" id="count-${sec.id}">${sec.rows.length}</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>${sec.cols.map(c=>`<th>${c}</th>`).join('')}<th style="width:36px;"></th></tr></thead>
+          <tbody id="tbody-${sec.id}"></tbody>
+        </table>
+        <button class="add-row-btn" onclick="addRow('${sec.id}')">+ Adicionar linha</button>
+      </div>`;
+    main.appendChild(wrap);
+    const tbody = document.getElementById('tbody-' + sec.id);
+    sec.rows.forEach(row => tbody.appendChild(buildRow(sec, row)));
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// FILTERS
+// ══════════════════════════════════════════════════════
+let activeFilters = { resp: null, status: null };
+
+function toggleFilter(val, btn) {
+  const isResp = ['pedro','natalia','carol'].includes(val);
+  const key = isResp ? 'resp' : 'status';
+  if (activeFilters[key] === val) {
+    activeFilters[key] = null; btn.classList.remove('active');
+  } else {
+    document.querySelectorAll('.filter-btn').forEach(b => {
+      const v = (b.getAttribute('onclick')||'').match(/'([^']+)'/)?.[1];
+      if (v && (isResp === ['pedro','natalia','carol'].includes(v))) b.classList.remove('active');
+    });
+    activeFilters[key] = val; btn.classList.add('active');
+  }
+  applyFilters();
+}
+
+function clearFilters() {
+  activeFilters = { resp: null, status: null };
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  applyFilters();
+}
+
+function applyFilters() {
+  document.querySelectorAll('tr.data-row').forEach(tr => {
+    const resp   = tr.dataset.resp   || '';
+    const status = tr.dataset.status || '';
+    let show = true;
+    if (activeFilters.resp   && !resp.includes(activeFilters.resp))     show = false;
+    if (activeFilters.status && !status.includes(activeFilters.status)) show = false;
+    tr.classList.toggle('hidden-row', !show);
+  });
+  SECTIONS.forEach(sec => {
+    const visible = document.querySelectorAll(`#tbody-${sec.id} tr.data-row:not(.hidden-row)`).length;
+    const el = document.getElementById('count-' + sec.id);
+    if (el) el.textContent = visible;
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// STATUS PICKER
+// ══════════════════════════════════════════════════════
+let currentBadge = null;
+const picker = document.getElementById('status-picker');
+
+function openStatusPicker(badge, e) {
+  e.stopPropagation();
+  currentBadge = badge;
+  picker.classList.add('open');
+  const rect = badge.getBoundingClientRect();
+  picker.style.top  = (rect.bottom + window.scrollY + 4) + 'px';
+  picker.style.left = rect.left + 'px';
+}
+
+function applyStatus(label, cls) {
+  if (!currentBadge) return;
+  currentBadge.textContent = label;
+  currentBadge.className = 'badge ' + cls;
+  const tr = currentBadge.closest('tr');
+  if (tr) { tr.dataset.status = label; scheduleRowSave(tr); }
+  picker.classList.remove('open');
+  applyFilters();
+}
+
+document.addEventListener('click', () => picker.classList.remove('open'));
+
+// ══════════════════════════════════════════════════════
+// ADD / DELETE
+// ══════════════════════════════════════════════════════
+function addRow(secId) {
+  const sec = SECTIONS.find(s => s.id === secId);
+  if (!sec) return;
+  const row = { lead:'', banker:'', proximo:'', responsavel:'—', prazo:'—',
+    status:{label:'pendente', cls:'b-amarelo'} };
+  sec.rows.push(row);
+  const tbody = document.getElementById('tbody-' + secId);
+  const tr = buildRow(sec, row);
+  tbody.appendChild(tr);
+  updateCount(secId);
+  // focus first editable cell
+  const cell = tr.querySelector('.cell');
+  if (cell) { cell.focus(); moveCursorToEnd(cell); }
+  scheduleRowSave(tr);
+  showToast('Linha adicionada');
+}
+
+function deleteRow(btn) {
+  const tr = btn.closest('tr');
+  const secId = tr.dataset.secId;
+  const spId = tr._rowData && tr._rowData._spId;
+  if (spId) deleteRowFromSharePoint(spId);
+  tr.remove();
+  updateCount(secId);
+  showToast('Linha removida');
+}
+
+function updateCount(secId) {
+  const visible = document.querySelectorAll(`#tbody-${secId} tr.data-row:not(.hidden-row)`).length;
+  const el = document.getElementById('count-' + secId);
+  if (el) el.textContent = visible;
+}
+
+function moveCursorToEnd(el) {
+  const range = document.createRange();
+  const sel = window.getSelection();
+  range.selectNodeContents(el);
+  range.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+// ══════════════════════════════════════════════════════
+// SAVE ROW (debounced)
+// ══════════════════════════════════════════════════════
+const saveTimers = new WeakMap();
+
+function scheduleRowSave(tr) {
+  if (saveTimers.has(tr)) clearTimeout(saveTimers.get(tr));
+  saveTimers.set(tr, setTimeout(() => doSaveRow(tr), 800));
+}
+
+function doSaveRow(tr) {
+  const secId = tr.dataset.secId;
+  const sec = SECTIONS.find(s => s.id === secId);
+  if (!sec) return;
+  // Read current values from DOM
+  const cells = tr.querySelectorAll('td');
+  const row = tr._rowData || {};
+  let ci = 0;
+  sec.colKeys.forEach(key => {
+    const td = cells[ci++];
+    if (!td) return;
+    if (key === 'status') {
+      const badge = td.querySelector('.badge');
+      if (badge) { row.status = { label: badge.textContent, cls: badge.className.replace('badge ','') }; }
+      tr.dataset.status = row.status ? row.status.label : '';
+    } else if (key === 'responsavel') {
+      const sel = td.querySelector('select');
+      if (sel) { row.responsavel = sel.value; tr.dataset.resp = sel.value.toLowerCase(); }
+    } else {
+      const cell = td.querySelector('.cell');
+      if (cell) row[key] = cell.textContent;
+    }
+  });
+  tr._rowData = row;
+  // Find order
+  const tbody = tr.closest('tbody');
+  const ordem = tbody ? Array.from(tbody.children).indexOf(tr) : 0;
+  saveRowToSharePoint(sec, row, ordem);
+}
+
+// ══════════════════════════════════════════════════════
+// EXPORT EMAIL
+// ══════════════════════════════════════════════════════
+function exportEmail() {
+  let html = `<div style="font-family:Arial,sans-serif;font-size:12px;color:#1a1a1a;">`;
+  html += `<p style="font-size:13px;font-weight:bold;margin:0 0 4px 0;">Client Strategy | Acompanhamento Semanal</p>`;
+  html += `<p style="font-size:11px;color:#666;margin:0 0 20px 0;">Semana de ${document.getElementById('week-label').textContent}</p>`;
+  SECTIONS.forEach(sec => {
+    const rows = document.querySelectorAll(`#tbody-${sec.id} tr.data-row:not(.hidden-row)`);
+    html += `<p style="font-size:12px;font-weight:bold;margin:0 0 6px 0;">${sec.title}</p>`;
+    html += `<table cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;margin-bottom:20px;">`;
+    html += `<tr style="background:#f5f5f3;">${sec.cols.map(c=>`<th style="text-align:left;font-size:10px;font-weight:bold;color:#666;padding:5px 9px;border:1px solid #ddd;">${c}</th>`).join('')}</tr>`;
+    rows.forEach((tr, i) => {
+      html += `<tr style="background:${i%2?'#fafaf9':'#fff'};">`;
+      tr.querySelectorAll('td:not(:last-child)').forEach(td => {
+        const badge = td.querySelector('.badge');
+        const sel   = td.querySelector('select');
+        const editable = td.querySelector('.cell');
+        let val = '', style = 'padding:5px 9px;border:1px solid #ddd;';
+        const statusMap = {
+          'b-verde':'background:#d1fae5;color:#065f46;',
+          'b-amarelo':'background:#fef3c7;color:#92400e;',
+          'b-azul':'background:#dbeafe;color:#1e40af;',
+          'b-cinza':'background:#f1f5f9;color:#475569;',
+          'b-teal':'background:#ccfbf1;color:#134e4a;',
+          'b-roxo':'background:#ede9fe;color:#5b21b6;',
+          'b-laranja':'background:#ffedd5;color:#9a3412;'
+        };
+        if (badge) {
+          const bc = statusMap[badge.className.replace('badge ','').trim()] || '';
+          val = `<span style="font-size:10px;font-weight:bold;padding:2px 8px;border-radius:8px;${bc}">${badge.textContent}</span>`;
+        } else if (sel) {
+          const v = sel.value;
+          const c = v.toLowerCase().includes('pedro')&&!v.toLowerCase().includes('carol')&&!v.toLowerCase().includes('natalia') ? '#15803d'
+            : v.toLowerCase().includes('natalia')&&!v.toLowerCase().includes('carol')&&!v.toLowerCase().includes('pedro') ? '#7c3aed'
+            : v.toLowerCase().includes('carol')&&!v.toLowerCase().includes('pedro')&&!v.toLowerCase().includes('natalia') ? '#2563eb' : '#555';
+          val = `<span style="font-weight:bold;color:${c};">${v}</span>`;
+        } else if (editable) {
+          val = editable.textContent;
+        }
+        html += `<td style="${style}">${val}</td>`;
+      });
+      html += `</tr>`;
+    });
+    html += `</table>`;
+  });
+  html += `</div>`;
+  const win = window.open('');
+  win.document.write(`<html><head><title>Export — Client Strategy</title></head>
+    <body style="margin:24px;font-family:Arial,sans-serif;">
+    ${html}
+    <p style="font-size:11px;color:#999;margin-top:28px;border-top:1px solid #eee;padding-top:16px;">
+      Selecione tudo (Ctrl+A), copie (Ctrl+C) e cole no corpo do e-mail no Outlook.
+    </p></body></html>`);
+  win.document.close();
+}
+
+// ══════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════
+let toastTimer;
+function showToast(msg, isError=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isError ? ' error' : '');
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+loadConfig();
+if (CONFIG.clientId && CONFIG.tenantId) {
+  initMsal();
+  // Try silent login
+  if (msalInstance) {
+    msalInstance.handleRedirectPromise().catch(() => {});
+    const accounts = msalInstance ? msalInstance.getAllAccounts() : [];
+    if (accounts.length > 0) {
+      currentUser = accounts[0];
+      msalInstance.acquireTokenSilent({ scopes:['Sites.ReadWrite.All'], account: currentUser })
+        .then(r => { accessToken = r.accessToken; showApp(currentUser.name || currentUser.username); })
+        .catch(() => { /* show login */ });
+    }
+  }
+}
+</script>
+</body>
+</html>
